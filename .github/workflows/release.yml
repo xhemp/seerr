@@ -57,7 +57,7 @@ jobs:
       - name: Draft Release
         run: gh release create ${GITHUB_REF_NAME} -t "Release ${GITHUB_REF_NAME}" -n "${RELEASE_BODY}" --draft
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.SEERR_TOKEN }}
           RELEASE_BODY: ${{ needs.changelog.outputs.release_body }}
 
   build:
@@ -65,9 +65,6 @@ jobs:
     strategy:
       matrix:
         include:
-          - runner: ubuntu-24.04
-            platform: linux/amd64
-            arch: amd64
           - runner: ubuntu-24.04-arm
             platform: linux/arm64
             arch: arm64
@@ -137,7 +134,7 @@ jobs:
         with:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          password: ${{ secrets.SEERR_TOKEN }}
 
       - name: Extract metadata
         id: meta
@@ -222,7 +219,7 @@ jobs:
         with:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          password: ${{ secrets.SEERR_TOKEN }}
 
       - name: Sign images
         run: |
@@ -303,43 +300,5 @@ jobs:
       - name: Publish release
         run: gh release edit "${{ env.VERSION }}" --draft=false --repo "${{ github.repository }}"
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-  discord:
-    name: Send Discord Notification
-    needs: publish-release
-    if: always()
-    runs-on: ubuntu-24.04
-    steps:
-      - name: Determine status
-        id: status
-        run: |
-          case "${{ needs.publish-release.result }}" in
-            success)   echo "status=Success"   >> $GITHUB_OUTPUT; echo "colour=3066993"  >> $GITHUB_OUTPUT ;;
-            failure)   echo "status=Failure"   >> $GITHUB_OUTPUT; echo "colour=15158332" >> $GITHUB_OUTPUT ;;
-            cancelled) echo "status=Cancelled" >> $GITHUB_OUTPUT; echo "colour=10181046" >> $GITHUB_OUTPUT ;;
-            *)         echo "status=Skipped"   >> $GITHUB_OUTPUT; echo "colour=9807270"  >> $GITHUB_OUTPUT ;;
-          esac
-
-      - name: Send notification
-        run: |
-          WEBHOOK="${{ secrets.DISCORD_WEBHOOK }}"
-
-          PAYLOAD=$(cat <<EOF
-          {
-            "embeds": [{
-              "title": "${{ steps.status.outputs.status }}: ${{ github.workflow }}",
-              "color": ${{ steps.status.outputs.colour }},
-              "fields": [
-                { "name": "Repository",   "value": "[${{ github.repository }}](${{ github.server_url }}/${{ github.repository }})", "inline": true },
-                { "name": "Ref",          "value": "${{ github.ref }}", "inline": true },
-                { "name": "Event",        "value": "${{ github.event_name }}", "inline": true },
-                { "name": "Triggered by", "value": "${{ github.actor }}", "inline": true },
-                { "name": "Workflow",     "value": "[${{ github.workflow }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})", "inline": true }
-              ]
-            }]
-          }
-          EOF
-          )
-
-          curl -sS -H "Content-Type: application/json" -X POST -d "$PAYLOAD" "$WEBHOOK" || true
+          GH_TOKEN: ${{ secrets.SEERR_TOKEN }}
+          
