@@ -21,9 +21,6 @@ jobs:
     strategy:
       matrix:
         include:
-          - runner: ubuntu-24.04
-            platform: linux/amd64
-            arch: amd64
           - runner: ubuntu-24.04-arm
             platform: linux/arm64
             arch: arm64
@@ -98,7 +95,7 @@ jobs:
         with:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          password: ${{ secrets.SEER_TOKEN }}
 
       - name: Derive preview version from tag
         id: ver
@@ -128,7 +125,7 @@ jobs:
         with:
           context: .
           file: ./Dockerfile
-          platforms: linux/amd64,linux/arm64
+          platforms: linux/arm64
           push: true
           build-args: |
             COMMIT_TAG=${{ github.sha }}
@@ -137,7 +134,6 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           tags: ${{ steps.meta.outputs.tags }}
           cache-from: |
-            type=gha,scope=linux/amd64
             type=gha,scope=linux/arm64
           cache-to: type=gha,mode=max
           provenance: false
