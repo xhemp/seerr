@@ -66,9 +66,6 @@ jobs:
     strategy:
       matrix:
         include:
-          - runner: ubuntu-24.04
-            platform: linux/amd64
-            arch: amd64
           - runner: ubuntu-24.04-arm
             platform: linux/arm64
             arch: arm64
@@ -133,7 +130,7 @@ jobs:
         with:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          password: ${{ secrets.SEERR_TOKEN }}
 
       - name: Extract metadata
         id: meta
@@ -153,7 +150,7 @@ jobs:
         with:
           context: .
           file: ./Dockerfile
-          platforms: linux/amd64,linux/arm64
+          platforms: linux/arm64
           push: true
           build-args: |
             COMMIT_TAG=${{ github.sha }}
@@ -166,43 +163,3 @@ jobs:
             type=gha,scope=linux/arm64
           cache-to: type=gha,mode=max
           provenance: false
-
-  discord:
-    name: Send Discord Notification
-    needs: publish
-    if: always() && github.event_name != 'pull_request' && !contains(github.event.head_commit.message, '[skip ci]')
-    runs-on: ubuntu-24.04
-    steps:
-      - name: Determine Workflow Status
-        id: status
-        run: |
-          case "${{ needs.publish.result }}" in
-            success)   echo "status=Success"   >> $GITHUB_OUTPUT; echo "colour=3066993"  >> $GITHUB_OUTPUT ;;
-            failure)   echo "status=Failure"   >> $GITHUB_OUTPUT; echo "colour=15158332" >> $GITHUB_OUTPUT ;;
-            cancelled) echo "status=Cancelled" >> $GITHUB_OUTPUT; echo "colour=10181046" >> $GITHUB_OUTPUT ;;
-            *)         echo "status=Skipped"   >> $GITHUB_OUTPUT; echo "colour=9807270"  >> $GITHUB_OUTPUT ;;
-          esac
-
-      - name: Send Discord notification
-        shell: bash
-        run: |
-          WEBHOOK="${{ secrets.DISCORD_WEBHOOK }}"
-
-          PAYLOAD=$(cat <<EOF
-          {
-            "embeds": [{
-              "title": "${{ steps.status.outputs.status }}: ${{ github.workflow }}",
-              "color": ${{ steps.status.outputs.colour }},
-              "fields": [
-                { "name": "Repository",   "value": "[${{ github.repository }}](${{ github.server_url }}/${{ github.repository }})", "inline": true },
-                { "name": "Ref",          "value": "${{ github.ref }}", "inline": true },
-                { "name": "Event",        "value": "${{ github.event_name }}", "inline": true },
-                { "name": "Triggered by", "value": "${{ github.actor }}", "inline": true },
-                { "name": "Workflow",     "value": "[${{ github.workflow }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})", "inline": true }
-              ],
-            }]
-          }
-          EOF
-          )
-
-          curl -sS -H "Content-Type: application/json" -X POST -d "$PAYLOAD" "$WEBHOOK" || true
